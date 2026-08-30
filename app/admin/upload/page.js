@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { upload } from '@vercel/blob/client';
 
 export default function UploadMoviePage() {
   const router = useRouter();
@@ -31,9 +32,15 @@ export default function UploadMoviePage() {
     }
 
     try {
-      // 1. Upload the video file itself (multipart/form-data, tracked with XHR for progress)
+      // 1. Upload the video file directly from the browser to Vercel Blob
+      // storage (not through our own API — serverless functions cap
+      // request bodies far below typical movie file sizes).
       setStatus('uploading');
-      const videoUrl = await uploadVideoWithProgress(videoFile, setProgress);
+      const blob = await upload(videoFile.name, videoFile, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+        onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
+      });
 
       // 2. Create the movie metadata entry, pointing at the stored Blob URL
       setStatus('saving');
@@ -43,7 +50,7 @@ export default function UploadMoviePage() {
         body: JSON.stringify({
           ...form,
           year: form.year ? Number(form.year) : undefined,
-          videoUrl,
+          videoUrl: blob.url,
         }),
       });
 
@@ -173,37 +180,4 @@ function Field({ label, children }) {
       {children}
     </label>
   );
-}
-
-// Uses XHR (not fetch) so we can report real upload progress for large video files.
-function uploadVideoWithProgress(file, onProgress) {
-  return new Promise((resolve, reject) => {
-    const formData = new FormData();
-    formData.append('video', file);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/upload');
-
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        onProgress(Math.round((e.loaded / e.total) * 100));
-      }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        const data = JSON.parse(xhr.responseText);
-        resolve(data.videoUrl);
-      } else {
-        try {
-          reject(new Error(JSON.parse(xhr.responseText).error || 'Upload failed'));
-        } catch {
-          reject(new Error('Upload failed'));
-        }
-      }
-    };
-    xhr.onerror = () => reject(new Error('Network error during upload'));
-
-    xhr.send(formData);
-  });
 }

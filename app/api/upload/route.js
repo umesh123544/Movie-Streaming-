@@ -1,48 +1,48 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
-import { put } from '@vercel/blob';
+import { handleUpload } from '@vercel/blob/client';
 import crypto from 'crypto';
 import path from 'path';
 
 export const runtime = 'nodejs';
 
-// POST /api/upload — admin only. Accepts multipart/form-data with a
-// "video" file field, uploads it to Vercel Blob storage (a serverless
-// deployment's own filesystem is read-only/ephemeral, so local disk
-// storage doesn't survive between requests — Blob storage is the
-// persistent equivalent). Returns the resulting public Blob URL, which
-// gets saved on the Movie document as `videoUrl`. That URL is never
-// sent to visitors directly — playback always goes through
-// /api/stream/[movieId], which fetches from it server-side.
+// POST /api/upload — this endpoint no longer receives the video file
+// itself. Large video files are uploaded directly from the browser to
+// Vercel Blob storage (bypassing this serverless function entirely,
+// since Vercel functions cap request bodies at a few MB — far too
+// small for a movie file). This route's only job is to hand out a
+// short-lived, admin-only upload token that authorizes the browser to
+// talk to Blob storage directly. See app/admin/upload/page.js for the
+// client side of this flow.
 export async function POST(req) {
   const session = await getServerSession(authOptions);
   if (session?.user?.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const formData = await req.formData();
-  const file = formData.get('video');
-
-  if (!file) {
-    return NextResponse.json({ error: 'No video file provided' }, { status: 400 });
-  }
-
-  if (!file.type.startsWith('video/')) {
-    return NextResponse.json({ error: 'Please upload a video file' }, { status: 400 });
-  }
-
-  const ext = path.extname(file.name) || '.mp4';
-  const filename = `${crypto.randomUUID()}${ext}`;
+  const body = await req.json();
 
   try {
-    const blob = await put(filename, file, {
-      access: 'public',
-      addRandomSuffix: false,
+    const jsonResponse = await handleUpload({
+      body,
+      request: req,
+      onBeforeGenerateToken: async (pathname) => {
+        const ext = path.extname(pathname) || '.mp4';
+        return {
+          allowedContentTypes: ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'],
+          addRandomSuffix: false,
+          pathname: `${crypto.randomUUID()}${ext}`,
+        };
+      },
+      onUploadCompleted: async () => {
+        // No server-side action needed — the client saves the returned
+        // blob URL to the movie's metadata via POST /api/movies.
+      },
     });
-    return NextResponse.json({ videoUrl: blob.url });
-  } catch (err) {
-    console.error('Blob upload failed:', err);
-    return NextResponse.json({ error: 'Upload failed: ' + err.message }, { status: 500 });
+
+    return NextResponse.json(jsonResponse);
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
