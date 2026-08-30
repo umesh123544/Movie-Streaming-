@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --font-body: 'Work Sans', system-ui, sans-serif;
+}
+
+body {
+  background-color: #0B0B0D;
+  color: #F2EFE9;
+}
+
+/* Marquee bulb-strip divider — the signature motif used across the site */
+.marquee-strip {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0;
+}
+.marquee-strip span {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #E8A33D;
+  opacity: 0.35;
+  animation: bulb-glow 2.4s ease-in-out infinite;
+}
+@keyframes bulb-glow {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-strip span { animation: none; opacity: 0.8; }
+}
+
+/* Visible keyboard focus ring, kept on-brand */
+:focus-visible {
+  outline: 2px solid #E8A33D;
+  outline-offset: 2px;
+}
+
+/* Discourage the most casual "save video as" attempts.
+   (See caveat in app/api/stream/[id]/route.js — this is not real DRM.) */
+video::-webkit-media-controls-download-button {
+  display: none !important;
+}
