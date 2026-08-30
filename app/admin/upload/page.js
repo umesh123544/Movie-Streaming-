@@ -15,10 +15,22 @@ export default function UploadMoviePage() {
   });
   const [videoFile, setVideoFile] = useState(null);
   const [videoUrlInput, setVideoUrlInput] = useState('');
-  const [videoMode, setVideoMode] = useState('upload'); // 'upload' | 'url'
+  const [videoMode, setVideoMode] = useState('url'); // 'upload' | 'url'
+  const [subtitleUrl, setSubtitleUrl] = useState('');
+  const [qualities, setQualities] = useState([]); // [{ label, url }]
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState(''); // '', 'uploading', 'saving', 'done', 'error'
   const [errorMsg, setErrorMsg] = useState('');
+
+  function addQualityRow() {
+    setQualities((prev) => [...prev, { label: '', url: '' }]);
+  }
+  function updateQualityRow(index, field, value) {
+    setQualities((prev) => prev.map((q, i) => (i === index ? { ...q, [field]: value } : q)));
+  }
+  function removeQualityRow(index) {
+    setQualities((prev) => prev.filter((_, i) => i !== index));
+  }
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -83,6 +95,8 @@ export default function UploadMoviePage() {
           ...form,
           year: form.year ? Number(form.year) : undefined,
           videoUrl: finalVideoUrl,
+          subtitleUrl: subtitleUrl.trim() || undefined,
+          qualities: qualities.filter((q) => q.label.trim() && q.url.trim()),
         }),
       });
 
@@ -199,6 +213,59 @@ export default function UploadMoviePage() {
               <p className="text-xs text-muted mt-1">
                 A direct link to an already-hosted video file (mp4/webm/ogg) — skips uploading here entirely.
               </p>
+            </div>
+          )}
+        </div>
+
+        <Field label="Subtitle file URL (optional, .vtt)">
+          <input
+            value={subtitleUrl}
+            onChange={(e) => setSubtitleUrl(e.target.value)}
+            className="input"
+            placeholder="https://…/subtitles.vtt"
+          />
+        </Field>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted">Alternate qualities (optional)</span>
+            <button
+              type="button"
+              onClick={addQualityRow}
+              className="text-xs text-marquee hover:underline"
+            >
+              + Add quality
+            </button>
+          </div>
+          {qualities.length === 0 ? (
+            <p className="text-xs text-muted">
+              None added — the player will just use the video above. Add rows to offer a quality picker (e.g. "480p", "720p").
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {qualities.map((q, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    value={q.label}
+                    onChange={(e) => updateQualityRow(i, 'label', e.target.value)}
+                    placeholder="Label (e.g. 480p)"
+                    className="input w-28 flex-shrink-0"
+                  />
+                  <input
+                    value={q.url}
+                    onChange={(e) => updateQualityRow(i, 'url', e.target.value)}
+                    placeholder="https://…/movie-480p.mp4"
+                    className="input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeQualityRow(i)}
+                    className="text-velvet text-sm px-2 flex-shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>

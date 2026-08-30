@@ -20,7 +20,7 @@ export async function POST(req) {
   }
 
   const body = await req.json();
-  const { title, description, genre, year, posterUrl, videoUrl } = body;
+  const { title, description, genre, year, posterUrl, videoUrl, subtitleUrl, qualities } = body;
 
   if (!title || !description || !genre || !posterUrl || !videoUrl) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -34,6 +34,8 @@ export async function POST(req) {
     year,
     posterUrl,
     videoUrl,
+    subtitleUrl: subtitleUrl || undefined,
+    qualities: Array.isArray(qualities) ? qualities.filter((q) => q.label && q.url) : [],
   });
 
   return NextResponse.json(movie, { status: 201 });

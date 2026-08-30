@@ -28,9 +28,17 @@ export async function GET(req, { params }) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
+  // Optional ?quality=720p — falls back to the default videoUrl if not
+  // provided or not found among this movie's alternate qualities.
+  const requestedQuality = req.nextUrl.searchParams.get('quality');
+  const match = requestedQuality
+    ? movie.qualities?.find((q) => q.label === requestedQuality)
+    : null;
+  const sourceUrl = match ? match.url : movie.videoUrl;
+
   const range = req.headers.get('range');
 
-  const blobRes = await fetch(movie.videoUrl, {
+  const blobRes = await fetch(sourceUrl, {
     headers: range ? { Range: range } : {},
   });
 

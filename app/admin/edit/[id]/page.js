@@ -20,9 +20,21 @@ export default function EditMoviePage() {
   const [videoFile, setVideoFile] = useState(null);
   const [videoMode, setVideoMode] = useState('keep'); // 'keep' | 'upload' | 'url'
   const [videoUrlInput, setVideoUrlInput] = useState('');
+  const [subtitleUrl, setSubtitleUrl] = useState('');
+  const [qualities, setQualities] = useState([]); // [{ label, url }]
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState(''); // '', 'uploading', 'saving', 'error'
   const [errorMsg, setErrorMsg] = useState('');
+
+  function addQualityRow() {
+    setQualities((prev) => [...prev, { label: '', url: '' }]);
+  }
+  function updateQualityRow(index, field, value) {
+    setQualities((prev) => prev.map((q, i) => (i === index ? { ...q, [field]: value } : q)));
+  }
+  function removeQualityRow(index) {
+    setQualities((prev) => prev.filter((_, i) => i !== index));
+  }
 
   useEffect(() => {
     fetch(`/api/movies/${id}`)
@@ -36,6 +48,8 @@ export default function EditMoviePage() {
           posterUrl: data.posterUrl || '',
           videoUrl: data.videoUrl || '',
         });
+        setSubtitleUrl(data.subtitleUrl || '');
+        setQualities(data.qualities || []);
         setLoading(false);
       })
       .catch(() => {
@@ -97,6 +111,8 @@ export default function EditMoviePage() {
           year: form.year ? Number(form.year) : undefined,
           posterUrl: form.posterUrl,
           videoUrl: finalVideoUrl,
+          subtitleUrl: subtitleUrl.trim() || undefined,
+          qualities: qualities.filter((q) => q.label.trim() && q.url.trim()),
         }),
       });
 
@@ -202,6 +218,57 @@ export default function EditMoviePage() {
               className="input"
               placeholder="https://…/movie.mp4"
             />
+          )}
+        </div>
+
+        <Field label="Subtitle file URL (optional, .vtt)">
+          <input
+            value={subtitleUrl}
+            onChange={(e) => setSubtitleUrl(e.target.value)}
+            className="input"
+            placeholder="https://…/subtitles.vtt"
+          />
+        </Field>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted">Alternate qualities (optional)</span>
+            <button
+              type="button"
+              onClick={addQualityRow}
+              className="text-xs text-marquee hover:underline"
+            >
+              + Add quality
+            </button>
+          </div>
+          {qualities.length === 0 ? (
+            <p className="text-xs text-muted">None added.</p>
+          ) : (
+            <div className="space-y-2">
+              {qualities.map((q, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    value={q.label}
+                    onChange={(e) => updateQualityRow(i, 'label', e.target.value)}
+                    placeholder="Label (e.g. 480p)"
+                    className="input w-28 flex-shrink-0"
+                  />
+                  <input
+                    value={q.url}
+                    onChange={(e) => updateQualityRow(i, 'url', e.target.value)}
+                    placeholder="https://…/movie-480p.mp4"
+                    className="input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeQualityRow(i)}
+                    className="text-velvet text-sm px-2 flex-shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
