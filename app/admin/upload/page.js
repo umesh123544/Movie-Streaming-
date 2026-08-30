@@ -43,6 +43,7 @@ export default function UploadMoviePage() {
       const blob = await upload(randomName, videoFile, {
         access: 'public',
         handleUploadUrl: '/api/upload',
+        multipart: true,
         onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
       });
 
