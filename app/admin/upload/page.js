@@ -34,9 +34,13 @@ export default function UploadMoviePage() {
     try {
       // 1. Upload the video file directly from the browser to Vercel Blob
       // storage (not through our own API — serverless functions cap
-      // request bodies far below typical movie file sizes).
+      // request bodies far below typical movie file sizes). Use a random
+      // filename rather than the original one, so nothing about the
+      // uploader's local file is exposed.
       setStatus('uploading');
-      const blob = await upload(videoFile.name, videoFile, {
+      const ext = videoFile.name.includes('.') ? videoFile.name.split('.').pop() : 'mp4';
+      const randomName = `${crypto.randomUUID()}.${ext}`;
+      const blob = await upload(randomName, videoFile, {
         access: 'public',
         handleUploadUrl: '/api/upload',
         onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),

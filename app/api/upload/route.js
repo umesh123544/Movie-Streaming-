@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { handleUpload } from '@vercel/blob/client';
-import crypto from 'crypto';
-import path from 'path';
 
 export const runtime = 'nodejs';
 
@@ -27,12 +25,10 @@ export async function POST(req) {
     const jsonResponse = await handleUpload({
       body,
       request: req,
-      onBeforeGenerateToken: async (pathname) => {
-        const ext = path.extname(pathname) || '.mp4';
+      onBeforeGenerateToken: async () => {
         return {
           allowedContentTypes: ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'],
-          addRandomSuffix: false,
-          pathname: `${crypto.randomUUID()}${ext}`,
+          addRandomSuffix: true,
         };
       },
       onUploadCompleted: async () => {
@@ -43,6 +39,7 @@ export async function POST(req) {
 
     return NextResponse.json(jsonResponse);
   } catch (error) {
+    console.error('Blob handleUpload error:', error);
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
