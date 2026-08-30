@@ -40,12 +40,22 @@ export default function UploadMoviePage() {
       setStatus('uploading');
       const ext = videoFile.name.includes('.') ? videoFile.name.split('.').pop() : 'mp4';
       const randomName = `${crypto.randomUUID()}.${ext}`;
-      const blob = await upload(randomName, videoFile, {
+
+      // Race the upload against a soft timeout — if it stalls (flaky
+      // connection, dropped request) we surface an error instead of
+      // leaving the progress bar frozen forever with no feedback.
+      const uploadPromise = upload(randomName, videoFile, {
         access: 'public',
         handleUploadUrl: '/api/upload',
-        multipart: true,
         onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
       });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Upload timed out after 3 minutes — try a smaller file or a more stable connection.')),
+          3 * 60 * 1000
+        )
+      );
+      const blob = await Promise.race([uploadPromise, timeoutPromise]);
 
       // 2. Create the movie metadata entry, pointing at the stored Blob URL
       setStatus('saving');
