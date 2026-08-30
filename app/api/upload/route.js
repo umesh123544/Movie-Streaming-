@@ -28,9 +28,8 @@ export async function POST(req) {
     return NextResponse.json({ error: 'No video file provided' }, { status: 400 });
   }
 
-  const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg'];
-  if (!allowedTypes.includes(file.type)) {
-    return NextResponse.json({ error: 'Unsupported video format' }, { status: 400 });
+  if (!file.type.startsWith('video/')) {
+    return NextResponse.json({ error: 'Please upload a video file' }, { status: 400 });
   }
 
   const ext = path.extname(file.name) || '.mp4';

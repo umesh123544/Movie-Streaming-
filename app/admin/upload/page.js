@@ -118,7 +118,7 @@ export default function UploadMoviePage() {
         <Field label="Video file (mp4, webm, or ogg)">
           <input
             type="file"
-            accept="video/mp4,video/webm,video/ogg"
+            accept="video/*"
             required
             onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
             className="input file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-marquee file:text-void file:font-medium"
