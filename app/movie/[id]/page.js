@@ -20,7 +20,7 @@ export default async function MoviePage({ params }) {
     <>
       <Navbar />
       <main className="max-w-5xl mx-auto px-6 py-10">
-        <VideoPlayer movieId={movie._id} />
+        <VideoPlayer movieId={movie._id} posterUrl={movie.posterUrl} title={movie.title} />
 
         <div className="mt-6">
           <div className="flex items-start justify-between gap-4 flex-wrap">

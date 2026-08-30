@@ -77,6 +77,9 @@ export default function AdminDashboardPage() {
                     <Link href={`/movie/${movie._id}`} className="text-marquee hover:underline">
                       View
                     </Link>
+                    <Link href={`/admin/edit/${movie._id}`} className="text-bone hover:underline">
+                      Edit
+                    </Link>
                     <button
                       onClick={() => handleDelete(movie._id)}
                       className="text-velvet hover:underline"

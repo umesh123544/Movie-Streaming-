@@ -39,9 +39,6 @@ export default function Navbar() {
               </Link>
             </>
           )}
-          <Link href="/admin/login" className="text-muted/60 hover:text-muted transition-colors text-xs">
-            Admin
-          </Link>
         </nav>
       </div>
     </header>

@@ -34,6 +34,7 @@ export default function AdminDashboardLayout({ children }) {
         <nav className="space-y-1 flex-1">
           <NavLink href="/admin/dashboard">Dashboard</NavLink>
           <NavLink href="/admin/upload">Upload Movie</NavLink>
+          <NavLink href="/admin/settings">Settings</NavLink>
         </nav>
         <button
           onClick={() => signOut({ callbackUrl: '/' })}

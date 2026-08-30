@@ -3,10 +3,13 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
+import AdminProfile from '@/models/AdminProfile';
 
 const authOptions = {
   providers: [
     // Admin — single account, credentials live in .env.local, never in the DB.
+    // The display name, however, IS stored in the DB (AdminProfile) so it
+    // can be changed from Settings without touching env vars.
     CredentialsProvider({
       id: 'admin',
       name: 'Admin Login',
@@ -21,7 +24,14 @@ const authOptions = {
         const valid = await bcrypt.compare(password, process.env.ADMIN_PASSWORD_HASH);
         if (!valid) return null;
 
-        return { id: 'admin', name: 'Admin', email, role: 'admin' };
+        await connectDB();
+        const profile = await AdminProfile.findOneAndUpdate(
+          { key: 'singleton' },
+          {},
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        return { id: 'admin', name: profile.name, email, role: 'admin' };
       },
     }),
 
@@ -54,12 +64,25 @@ const authOptions = {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.name = user.name;
       }
       return token;
     },
     async session({ session, token }) {
       session.user.role = token.role;
       session.user.id = token.id;
+
+      // For the admin, always pull the latest display name from the DB
+      // rather than trusting the JWT's cached value — this way a name
+      // change in Settings takes effect immediately, no re-login needed.
+      if (token.role === 'admin') {
+        await connectDB();
+        const profile = await AdminProfile.findOne({ key: 'singleton' }).lean();
+        session.user.name = profile?.name || 'Admin';
+      } else {
+        session.user.name = token.name;
+      }
+
       return session;
     },
   },
