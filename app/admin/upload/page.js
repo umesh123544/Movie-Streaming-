@@ -14,6 +14,8 @@ export default function UploadMoviePage() {
     posterUrl: '',
   });
   const [videoFile, setVideoFile] = useState(null);
+  const [videoUrlInput, setVideoUrlInput] = useState('');
+  const [videoMode, setVideoMode] = useState('upload'); // 'upload' | 'url'
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState(''); // '', 'uploading', 'saving', 'done', 'error'
   const [errorMsg, setErrorMsg] = useState('');
@@ -26,38 +28,53 @@ export default function UploadMoviePage() {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!videoFile) {
+    if (videoMode === 'upload' && !videoFile) {
       setErrorMsg('Please choose a video file.');
+      return;
+    }
+    if (videoMode === 'url' && !videoUrlInput.trim()) {
+      setErrorMsg('Please paste a video URL.');
       return;
     }
 
     try {
-      // 1. Upload the video file directly from the browser to Vercel Blob
-      // storage (not through our own API — serverless functions cap
-      // request bodies far below typical movie file sizes). Use a random
-      // filename rather than the original one, so nothing about the
-      // uploader's local file is exposed.
-      setStatus('uploading');
-      const ext = videoFile.name.includes('.') ? videoFile.name.split('.').pop() : 'mp4';
-      const randomName = `${crypto.randomUUID()}.${ext}`;
+      let finalVideoUrl;
 
-      // Race the upload against a soft timeout — if it stalls (flaky
-      // connection, dropped request) we surface an error instead of
-      // leaving the progress bar frozen forever with no feedback.
-      const uploadPromise = upload(randomName, videoFile, {
-        access: 'public',
-        handleUploadUrl: '/api/upload',
-        onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
-      });
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error('Upload timed out after 3 minutes — try a smaller file or a more stable connection.')),
-          3 * 60 * 1000
-        )
-      );
-      const blob = await Promise.race([uploadPromise, timeoutPromise]);
+      if (videoMode === 'url') {
+        // Video is already hosted elsewhere (Google Drive direct link,
+        // another CDN, etc.) — skip our own upload flow entirely and
+        // just point the player at it. /api/stream still proxies through
+        // this URL server-side, so it's never exposed to visitors directly.
+        finalVideoUrl = videoUrlInput.trim();
+      } else {
+        // Upload the video file directly from the browser to Vercel Blob
+        // storage (not through our own API — serverless functions cap
+        // request bodies far below typical movie file sizes). Use a random
+        // filename rather than the original one, so nothing about the
+        // uploader's local file is exposed.
+        setStatus('uploading');
+        const ext = videoFile.name.includes('.') ? videoFile.name.split('.').pop() : 'mp4';
+        const randomName = `${crypto.randomUUID()}.${ext}`;
 
-      // 2. Create the movie metadata entry, pointing at the stored Blob URL
+        // Race the upload against a soft timeout — if it stalls (flaky
+        // connection, dropped request) we surface an error instead of
+        // leaving the progress bar frozen forever with no feedback.
+        const uploadPromise = upload(randomName, videoFile, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+          onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
+        });
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Upload timed out after 3 minutes — try a smaller file or a more stable connection.')),
+            3 * 60 * 1000
+          )
+        );
+        const blob = await Promise.race([uploadPromise, timeoutPromise]);
+        finalVideoUrl = blob.url;
+      }
+
+      // Create the movie metadata entry, pointing at the video URL
       setStatus('saving');
       const res = await fetch('/api/movies', {
         method: 'POST',
@@ -65,7 +82,7 @@ export default function UploadMoviePage() {
         body: JSON.stringify({
           ...form,
           year: form.year ? Number(form.year) : undefined,
-          videoUrl: blob.url,
+          videoUrl: finalVideoUrl,
         }),
       });
 
@@ -137,15 +154,54 @@ export default function UploadMoviePage() {
           />
         </Field>
 
-        <Field label="Video file (mp4, webm, or ogg)">
-          <input
-            type="file"
-            accept="video/*"
-            required
-            onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-            className="input file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-marquee file:text-void file:font-medium"
-          />
-        </Field>
+        <div>
+          <span className="block text-sm text-muted mb-2">Video source</span>
+          <div className="flex gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => setVideoMode('upload')}
+              className={`text-sm px-3 py-1.5 rounded-md border ${
+                videoMode === 'upload'
+                  ? 'bg-marquee text-void border-marquee'
+                  : 'border-white/20 text-muted'
+              }`}
+            >
+              Upload a file
+            </button>
+            <button
+              type="button"
+              onClick={() => setVideoMode('url')}
+              className={`text-sm px-3 py-1.5 rounded-md border ${
+                videoMode === 'url'
+                  ? 'bg-marquee text-void border-marquee'
+                  : 'border-white/20 text-muted'
+              }`}
+            >
+              Paste a video URL
+            </button>
+          </div>
+
+          {videoMode === 'upload' ? (
+            <input
+              type="file"
+              accept="video/*"
+              onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-marquee file:text-void file:font-medium"
+            />
+          ) : (
+            <div>
+              <input
+                value={videoUrlInput}
+                onChange={(e) => setVideoUrlInput(e.target.value)}
+                className="input"
+                placeholder="https://…/movie.mp4"
+              />
+              <p className="text-xs text-muted mt-1">
+                A direct link to an already-hosted video file (mp4/webm/ogg) — skips uploading here entirely.
+              </p>
+            </div>
+          )}
+        </div>
 
         {status === 'uploading' && (
           <div>
