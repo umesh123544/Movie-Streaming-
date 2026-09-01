@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Movie from '@/models/Movie';
-import { isPcloudLink, resolvePcloudUrl } from '@/lib/pcloud';
+import { resolveVideoSource } from '@/lib/videoSource';
 
 export const runtime = 'nodejs';
 
@@ -38,12 +38,10 @@ export async function GET(req, { params }) {
   const sourceUrl = match ? match.url : movie.videoUrl;
 
   let resolvedUrl = sourceUrl;
-  if (isPcloudLink(sourceUrl)) {
-    try {
-      resolvedUrl = await resolvePcloudUrl(sourceUrl);
-    } catch (err) {
-      return NextResponse.json({ error: err.message }, { status: 502 });
-    }
+  try {
+    resolvedUrl = await resolveVideoSource(sourceUrl);
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 502 });
   }
 
   const range = req.headers.get('range');

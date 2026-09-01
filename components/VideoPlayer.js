@@ -1,14 +1,17 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { getYouTubeEmbedUrl } from '@/lib/videoSource';
 
-export default function VideoPlayer({ movieId, posterUrl, title, subtitleUrl, qualities = [] }) {
+export default function VideoPlayer({ movieId, videoUrl, posterUrl, title, subtitleUrl, qualities = [] }) {
   const tracked = useRef(false);
   const videoRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);
   const [quality, setQuality] = useState('auto');
   const [speed, setSpeed] = useState(1);
+
+  const youtubeEmbedUrl = videoUrl ? getYouTubeEmbedUrl(videoUrl) : null;
 
   function handlePlay() {
     if (tracked.current) return;
@@ -19,6 +22,33 @@ export default function VideoPlayer({ movieId, posterUrl, title, subtitleUrl, qu
       body: JSON.stringify({ movieId }),
     }).catch(() => {});
   }
+
+  // YouTube videos can't be proxied as a raw file — they only play
+  // through YouTube's own embeddable iframe player. Skip/speed/quality
+  // controls below aren't shown for this mode; use YouTube's own
+  // on-screen controls instead.
+  if (youtubeEmbedUrl) {
+    if (!tracked.current) {
+      tracked.current = true;
+      fetch('/api/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movieId }),
+      }).catch(() => {});
+    }
+    return (
+      <div className="w-full aspect-video bg-black rounded-md overflow-hidden">
+        <iframe
+          className="w-full h-full"
+          src={youtubeEmbedUrl}
+          title={title || 'Video player'}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+
 
   function skip(seconds) {
     if (videoRef.current) {

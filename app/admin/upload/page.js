@@ -263,7 +263,7 @@ export default function UploadMoviePage() {
                 placeholder="https://…/movie.mp4"
               />
               <p className="text-xs text-muted mt-1">
-                A direct link to an already-hosted video file (mp4/webm/ogg) — skips uploading here entirely.
+                Works with: direct .mp4/.webm/.ogg links, Dropbox, pCloud, Google Drive (small files only), or a YouTube link.
               </p>
             </div>
           )}

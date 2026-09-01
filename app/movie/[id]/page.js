@@ -24,6 +24,7 @@ export default async function MoviePage({ params }) {
       <main className="max-w-5xl mx-auto px-6 py-10">
         <VideoPlayer
           movieId={movie._id}
+          videoUrl={movie.videoUrl}
           posterUrl={movie.posterUrl}
           title={movie.title}
           subtitleUrl={movie.subtitleUrl}
