@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { upload } from '@vercel/blob/client';
+import { uploadWithTimeout } from '@/lib/uploadWithTimeout';
 import Navbar from '@/components/Navbar';
 import MovieCard from '@/components/MovieCard';
 import Avatar from '@/components/Avatar';
@@ -47,10 +47,7 @@ export default function AccountPage() {
         setAvatarUploading(true);
         const ext = avatarFile.name.includes('.') ? avatarFile.name.split('.').pop() : 'jpg';
         const randomName = `avatar-${crypto.randomUUID()}.${ext}`;
-        const blob = await upload(randomName, avatarFile, {
-          access: 'public',
-          handleUploadUrl: '/api/upload',
-        });
+        const blob = await uploadWithTimeout(randomName, avatarFile, { timeoutMs: 90 * 1000 });
         avatarUrl = blob.url;
         setAvatarUploading(false);
       }

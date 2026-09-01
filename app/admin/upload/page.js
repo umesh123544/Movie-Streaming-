@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { upload } from '@vercel/blob/client';
+import { uploadWithTimeout } from '@/lib/uploadWithTimeout';
 
 export default function UploadMoviePage() {
   const router = useRouter();
@@ -63,10 +63,7 @@ export default function UploadMoviePage() {
         setPosterUploading(true);
         const ext = posterFile.name.includes('.') ? posterFile.name.split('.').pop() : 'jpg';
         const randomName = `poster-${crypto.randomUUID()}.${ext}`;
-        const posterBlob = await upload(randomName, posterFile, {
-          access: 'public',
-          handleUploadUrl: '/api/upload',
-        });
+        const posterBlob = await uploadWithTimeout(randomName, posterFile, { timeoutMs: 90 * 1000 });
         finalPosterUrl = posterBlob.url;
         setPosterUploading(false);
       }
@@ -89,21 +86,10 @@ export default function UploadMoviePage() {
         const ext = videoFile.name.includes('.') ? videoFile.name.split('.').pop() : 'mp4';
         const randomName = `${crypto.randomUUID()}.${ext}`;
 
-        // Race the upload against a soft timeout — if it stalls (flaky
-        // connection, dropped request) we surface an error instead of
-        // leaving the progress bar frozen forever with no feedback.
-        const uploadPromise = upload(randomName, videoFile, {
-          access: 'public',
-          handleUploadUrl: '/api/upload',
-          onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
+        const blob = await uploadWithTimeout(randomName, videoFile, {
+          onProgress: setProgress,
+          timeoutMs: 3 * 60 * 1000,
         });
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error('Upload timed out after 3 minutes — try a smaller file or a more stable connection.')),
-            3 * 60 * 1000
-          )
-        );
-        const blob = await Promise.race([uploadPromise, timeoutPromise]);
         finalVideoUrl = blob.url;
       }
 
