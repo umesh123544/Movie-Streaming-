@@ -16,10 +16,12 @@ export default function WatchlistButton({ movieId }) {
       setChecking(false);
       return;
     }
-    fetch('/api/watchlist')
-      .then((res) => res.json())
+    setChecking(true);
+    fetch('/api/watchlist', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : []))
       .then((list) => {
-        setSaved(list.some((m) => m._id === movieId));
+        const arr = Array.isArray(list) ? list : [];
+        setSaved(arr.some((m) => String(m._id) === String(movieId)));
         setChecking(false);
       })
       .catch(() => setChecking(false));
@@ -32,13 +34,14 @@ export default function WatchlistButton({ movieId }) {
     }
 
     setBusy(true);
-    const method = saved ? 'DELETE' : 'POST';
+    const wasSaved = saved;
+    const method = wasSaved ? 'DELETE' : 'POST';
     const res = await fetch('/api/watchlist', {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ movieId }),
     });
-    if (res.ok) setSaved(!saved);
+    if (res.ok) setSaved(!wasSaved);
     setBusy(false);
   }
 

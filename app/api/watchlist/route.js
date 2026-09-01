@@ -4,6 +4,8 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import { connectDB } from '@/lib/mongodb';
 import User from '@/models/User';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/watchlist — the signed-in viewer's saved movies
 export async function GET() {
   const session = await getServerSession(authOptions);

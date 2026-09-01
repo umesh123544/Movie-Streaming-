@@ -5,6 +5,8 @@ import Navbar from '@/components/Navbar';
 import VideoPlayer from '@/components/VideoPlayer';
 import WatchlistButton from '@/components/WatchlistButton';
 
+export const dynamic = 'force-dynamic';
+
 async function getMovie(id) {
   await connectDB();
   const movie = await Movie.findById(id).lean().catch(() => null);

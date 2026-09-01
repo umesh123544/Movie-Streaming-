@@ -72,15 +72,17 @@ const authOptions = {
       session.user.role = token.role;
       session.user.id = token.id;
 
-      // For the admin, always pull the latest display name from the DB
-      // rather than trusting the JWT's cached value — this way a name
-      // change in Settings takes effect immediately, no re-login needed.
+      // Always pull the latest profile data from the DB rather than
+      // trusting the JWT's cached value — this way a name/photo change
+      // in Settings takes effect immediately, no re-login needed.
+      await connectDB();
       if (token.role === 'admin') {
-        await connectDB();
         const profile = await AdminProfile.findOne({ key: 'singleton' }).lean();
         session.user.name = profile?.name || 'Admin';
       } else {
-        session.user.name = token.name;
+        const dbUser = await User.findById(token.id).lean();
+        session.user.name = dbUser?.name || token.name;
+        session.user.avatarUrl = dbUser?.avatarUrl || null;
       }
 
       return session;

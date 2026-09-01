@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
+import Avatar from './Avatar';
 
 export default function Navbar() {
   const { data: session, status } = useSession();
+  const firstName = session?.user?.name?.trim().split(/\s+/)[0];
 
   return (
     <header className="border-b border-white/10">
@@ -16,8 +18,9 @@ export default function Navbar() {
         <nav className="flex items-center gap-5 text-sm">
           {status === 'authenticated' && session.user.role === 'user' ? (
             <>
-              <Link href="/account" className="text-muted hover:text-bone transition-colors">
-                My account
+              <Link href="/account" className="flex items-center gap-2 text-muted hover:text-bone transition-colors">
+                <Avatar name={session.user.name} avatarUrl={session.user.avatarUrl} size={28} />
+                <span className="hidden sm:inline">{firstName}</span>
               </Link>
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
