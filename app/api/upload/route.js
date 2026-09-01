@@ -27,7 +27,16 @@ export async function POST(req) {
       request: req,
       onBeforeGenerateToken: async () => {
         return {
-          allowedContentTypes: ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'],
+          allowedContentTypes: [
+            'video/mp4',
+            'video/webm',
+            'video/ogg',
+            'video/quicktime',
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/gif',
+          ],
           addRandomSuffix: true,
         };
       },
