@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { uploadWithTimeout } from '@/lib/uploadWithTimeout';
+import { uploadWithTimeout, uploadImageViaServer } from '@/lib/uploadWithTimeout';
 
 export default function EditMoviePage() {
   const router = useRouter();
@@ -86,10 +86,8 @@ export default function EditMoviePage() {
         finalPosterUrl = posterUrlInput.trim();
       } else if (posterMode === 'upload' && posterFile) {
         setPosterUploading(true);
-        const ext = posterFile.name.includes('.') ? posterFile.name.split('.').pop() : 'jpg';
-        const randomName = `poster-${crypto.randomUUID()}.${ext}`;
-        const posterBlob = await uploadWithTimeout(randomName, posterFile, { timeoutMs: 90 * 1000 });
-        finalPosterUrl = posterBlob.url;
+        const { url } = await uploadImageViaServer(posterFile);
+        finalPosterUrl = url;
         setPosterUploading(false);
       }
 
