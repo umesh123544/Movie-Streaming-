@@ -17,6 +17,10 @@ export default function EditMoviePage() {
     videoUrl: '',
   });
   const [loading, setLoading] = useState(true);
+  const [posterMode, setPosterMode] = useState('keep'); // 'keep' | 'url' | 'upload'
+  const [posterFile, setPosterFile] = useState(null);
+  const [posterUrlInput, setPosterUrlInput] = useState('');
+  const [posterUploading, setPosterUploading] = useState(false);
   const [videoFile, setVideoFile] = useState(null);
   const [videoMode, setVideoMode] = useState('keep'); // 'keep' | 'upload' | 'url'
   const [videoUrlInput, setVideoUrlInput] = useState('');
@@ -76,6 +80,22 @@ export default function EditMoviePage() {
     }
 
     try {
+      let finalPosterUrl = form.posterUrl; // default: unchanged
+
+      if (posterMode === 'url') {
+        finalPosterUrl = posterUrlInput.trim();
+      } else if (posterMode === 'upload' && posterFile) {
+        setPosterUploading(true);
+        const ext = posterFile.name.includes('.') ? posterFile.name.split('.').pop() : 'jpg';
+        const randomName = `poster-${crypto.randomUUID()}.${ext}`;
+        const posterBlob = await upload(randomName, posterFile, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+        });
+        finalPosterUrl = posterBlob.url;
+        setPosterUploading(false);
+      }
+
       let finalVideoUrl = form.videoUrl; // default: unchanged
 
       if (videoMode === 'url') {
@@ -109,7 +129,7 @@ export default function EditMoviePage() {
           description: form.description,
           genre: form.genre,
           year: form.year ? Number(form.year) : undefined,
-          posterUrl: form.posterUrl,
+          posterUrl: finalPosterUrl,
           videoUrl: finalVideoUrl,
           subtitleUrl: subtitleUrl.trim() || undefined,
           qualities: qualities.filter((q) => q.label.trim() && q.url.trim()),
@@ -123,6 +143,7 @@ export default function EditMoviePage() {
 
       router.push('/admin/dashboard');
     } catch (err) {
+      setPosterUploading(false);
       setStatus('error');
       setErrorMsg(err.message);
     }
@@ -173,21 +194,53 @@ export default function EditMoviePage() {
           </Field>
         </div>
 
-        <Field label="Poster image URL">
-          <input
-            required
-            value={form.posterUrl}
-            onChange={(e) => updateField('posterUrl', e.target.value)}
-            className="input"
-          />
-          {form.posterUrl && (
+        <div>
+          <span className="block text-sm text-muted mb-2">Poster image</span>
+          <div className="flex flex-wrap gap-2 mb-3">
+            <ModeButton active={posterMode === 'keep'} onClick={() => setPosterMode('keep')}>
+              Keep current
+            </ModeButton>
+            <ModeButton active={posterMode === 'url'} onClick={() => setPosterMode('url')}>
+              Paste a new URL
+            </ModeButton>
+            <ModeButton active={posterMode === 'upload'} onClick={() => setPosterMode('upload')}>
+              Upload a new photo
+            </ModeButton>
+          </div>
+
+          {posterMode === 'url' && (
+            <input
+              value={posterUrlInput}
+              onChange={(e) => setPosterUrlInput(e.target.value)}
+              className="input"
+              placeholder="https://…"
+            />
+          )}
+          {posterMode === 'upload' && (
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setPosterFile(e.target.files?.[0] || null)}
+              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-marquee file:text-void file:font-medium"
+            />
+          )}
+
+          {posterMode === 'upload' && posterFile ? (
             <img
-              src={form.posterUrl}
+              src={URL.createObjectURL(posterFile)}
               alt="Poster preview"
               className="mt-2 h-32 w-auto rounded-md border border-white/10 object-cover"
             />
+          ) : (
+            form.posterUrl && (
+              <img
+                src={form.posterUrl}
+                alt="Current poster"
+                className="mt-2 h-32 w-auto rounded-md border border-white/10 object-cover"
+              />
+            )
           )}
-        </Field>
+        </div>
 
         <div>
           <span className="block text-sm text-muted mb-2">Video</span>

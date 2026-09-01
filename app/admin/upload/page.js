@@ -13,6 +13,9 @@ export default function UploadMoviePage() {
     year: '',
     posterUrl: '',
   });
+  const [posterMode, setPosterMode] = useState('url'); // 'url' | 'upload'
+  const [posterFile, setPosterFile] = useState(null);
+  const [posterUploading, setPosterUploading] = useState(false);
   const [videoFile, setVideoFile] = useState(null);
   const [videoUrlInput, setVideoUrlInput] = useState('');
   const [videoMode, setVideoMode] = useState('url'); // 'upload' | 'url'
@@ -40,6 +43,10 @@ export default function UploadMoviePage() {
     e.preventDefault();
     setErrorMsg('');
 
+    if (posterMode === 'upload' && !posterFile && !form.posterUrl) {
+      setErrorMsg('Please choose a poster photo, or switch to "Paste a URL".');
+      return;
+    }
     if (videoMode === 'upload' && !videoFile) {
       setErrorMsg('Please choose a video file.');
       return;
@@ -50,6 +57,20 @@ export default function UploadMoviePage() {
     }
 
     try {
+      let finalPosterUrl = form.posterUrl;
+
+      if (posterMode === 'upload' && posterFile) {
+        setPosterUploading(true);
+        const ext = posterFile.name.includes('.') ? posterFile.name.split('.').pop() : 'jpg';
+        const randomName = `poster-${crypto.randomUUID()}.${ext}`;
+        const posterBlob = await upload(randomName, posterFile, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+        });
+        finalPosterUrl = posterBlob.url;
+        setPosterUploading(false);
+      }
+
       let finalVideoUrl;
 
       if (videoMode === 'url') {
@@ -93,6 +114,7 @@ export default function UploadMoviePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          posterUrl: finalPosterUrl,
           year: form.year ? Number(form.year) : undefined,
           videoUrl: finalVideoUrl,
           subtitleUrl: subtitleUrl.trim() || undefined,
@@ -108,6 +130,7 @@ export default function UploadMoviePage() {
       setStatus('done');
       router.push('/admin/dashboard');
     } catch (err) {
+      setPosterUploading(false);
       setStatus('error');
       setErrorMsg(err.message);
     }
@@ -158,15 +181,60 @@ export default function UploadMoviePage() {
           </Field>
         </div>
 
-        <Field label="Poster image URL">
-          <input
-            required
-            value={form.posterUrl}
-            onChange={(e) => updateField('posterUrl', e.target.value)}
-            className="input"
-            placeholder="https://…"
-          />
-        </Field>
+        <div>
+          <span className="block text-sm text-muted mb-2">Poster image</span>
+          <div className="flex gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => setPosterMode('url')}
+              className={`text-sm px-3 py-1.5 rounded-md border ${
+                posterMode === 'url' ? 'bg-marquee text-void border-marquee' : 'border-white/20 text-muted'
+              }`}
+            >
+              Paste a URL
+            </button>
+            <button
+              type="button"
+              onClick={() => setPosterMode('upload')}
+              className={`text-sm px-3 py-1.5 rounded-md border ${
+                posterMode === 'upload' ? 'bg-marquee text-void border-marquee' : 'border-white/20 text-muted'
+              }`}
+            >
+              Upload a photo
+            </button>
+          </div>
+
+          {posterMode === 'url' ? (
+            <input
+              value={form.posterUrl}
+              onChange={(e) => updateField('posterUrl', e.target.value)}
+              className="input"
+              placeholder="https://…"
+            />
+          ) : (
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setPosterFile(e.target.files?.[0] || null)}
+              className="input file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-marquee file:text-void file:font-medium"
+            />
+          )}
+
+          {posterMode === 'upload' && posterFile && (
+            <img
+              src={URL.createObjectURL(posterFile)}
+              alt="Poster preview"
+              className="mt-2 h-32 w-auto rounded-md border border-white/10 object-cover"
+            />
+          )}
+          {posterMode === 'url' && form.posterUrl && (
+            <img
+              src={form.posterUrl}
+              alt="Poster preview"
+              className="mt-2 h-32 w-auto rounded-md border border-white/10 object-cover"
+            />
+          )}
+        </div>
 
         <div>
           <span className="block text-sm text-muted mb-2">Video source</span>
@@ -270,6 +338,7 @@ export default function UploadMoviePage() {
           )}
         </div>
 
+        {posterUploading && <p className="text-xs text-muted">Uploading poster…</p>}
         {status === 'uploading' && (
           <div>
             <div className="h-2 bg-surface rounded-full overflow-hidden">
@@ -286,10 +355,10 @@ export default function UploadMoviePage() {
 
         <button
           type="submit"
-          disabled={status === 'uploading' || status === 'saving'}
+          disabled={status === 'uploading' || status === 'saving' || posterUploading}
           className="bg-marquee text-void font-display text-lg tracking-wide px-6 py-2.5 rounded-md hover:brightness-110 disabled:opacity-50"
         >
-          {status === 'uploading' || status === 'saving' ? 'PUBLISHING…' : 'PUBLISH MOVIE'}
+          {status === 'uploading' || status === 'saving' || posterUploading ? 'PUBLISHING…' : 'PUBLISH MOVIE'}
         </button>
       </form>
 
